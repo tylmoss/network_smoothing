@@ -13,28 +13,76 @@ vignette: >
 
 This vignette will demonstrate the use of the netPropagate function using dummy networks and data.
 
-## Vignette Info
-
-Note the various macros within the `vignette` setion of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
-
-## Figures
-
-The figure sizes have been customised so that you can easily put two images side-by-side. 
-
-```{r, fig.show='hold', fig.cap = "Some random plots."}
-plot(1:10, pch =21, bg = colors()[sample(1:500, 10)])
-plot(rnorm(10), pch =21, bg = colors()[sample(1:500, 10)])
+```{r}
+library(network.smoothing)
 ```
 
-## More Examples
+Create dummy network and mutation matrix.
 
-You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, results='asis'}
-knitr::kable(head(mtcars, 10))
+```{r}
+set.seed(2001)
+# Generate random undirected network
+genes = paste0("g",1:150)
+net = data.frame(from = sample(genes, 50, TRUE), 
+                 to = sample(genes, 10, TRUE), 
+                 stringsAsFactors = F)
+net = net[net$from != net$to,] # remove self loops
 ```
 
-Also a quote using `>`:
+Create graph of network
 
-> "He who gives up [code] safety for [code] speed deserves neither."
-([via](https://twitter.com/hadleywickham/status/504368538874703872))
+```{r, fig.height = 5, fig.width=5}
+gr = igraph::graph_from_data_frame(net, directed = F)
+gr <- igraph::simplify(gr)
+my_layout <- igraph::layout.kamada.kawai(gr)
+plot(gr, layout = my_layout)
+```
+
+
+Run network smoothing
+
+```{r}
+# create adjacency matrix
+net.adj = as.matrix(igraph::get.adjacency(gr))
+
+# weight edges by degree of connected nodes
+W = degreeNormalize(net.adj)
+
+# Generate random mutation data for single sample
+Y = sample(c(0,1), ncol(W), replace = T, prob = c(.9,.1))
+# smooth data over network
+res1 = netPropagate(mutData = Y, adj.mat = W, alpha = .7, verbose = FALSE)
+```
+
+Plot input data for dummy patient to the network
+
+```{r, fig.height = 5, fig.width=5}
+map_to_color <- function(x){
+  rgb(colorRamp(c("white","red"))(x), 
+      maxColorValue = 255)
+}
+
+# plot input data
+plot(gr, 
+     vertex.label.color = "black",
+     vertex.color = purrr::map_chr(Y, map_to_color), 
+     vertex.label.cex = .7, 
+     layout = my_layout, 
+     vertex.label = NULL, 
+     main = paste("input"))
+```
+
+Plot smoothed data to network
+
+```{r, fig.height = 5, fig.width=5}
+# plot smoothed data
+smooth_Y <- res1$result[1,]
+smooth_Y[smooth_Y > 1] <- 1
+plot(gr, 
+     vertex.label.color = "black", 
+     vertex.color = purrr::map_chr(smooth_Y, map_to_color),
+     vertex.label.cex = .7, 
+     layout = my_layout, main = sprintf("Smoothed\n step: %s",res1$steps))
+```
+
+
