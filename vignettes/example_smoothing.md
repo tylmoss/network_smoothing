@@ -1,0 +1,83 @@
+Dummy example of network smoothing
+================
+Tyler J Moss
+2019-07-25
+
+This vignette will demonstrate the use of the netPropagate function using dummy networks and data.
+
+``` r
+library(network.smoothing)
+```
+
+Create dummy network and mutation matrix.
+
+``` r
+set.seed(2001)
+# Generate random undirected network
+genes = paste0("g",1:150)
+net = data.frame(from = sample(genes, 50, TRUE), 
+                 to = sample(genes, 10, TRUE), 
+                 stringsAsFactors = F)
+net = net[net$from != net$to,] # remove self loops
+```
+
+Create graph of network
+
+``` r
+gr = igraph::graph_from_data_frame(net, directed = F)
+gr <- igraph::simplify(gr)
+my_layout <- igraph::layout.kamada.kawai(gr)
+plot(gr, layout = my_layout)
+```
+
+![](C:/Users/tjmoss/Documents/my_projects/network_smoothing/vignettes/example_smoothing_files/figure-markdown_github/unnamed-chunk-3-1.png)
+
+Run network smoothing
+
+``` r
+# create adjacency matrix
+net.adj = as.matrix(igraph::get.adjacency(gr))
+
+# weight edges by degree of connected nodes
+W = degreeNormalize(net.adj)
+
+# Generate random mutation data for single sample
+Y = sample(c(0,1), ncol(W), replace = T, prob = c(.9,.1))
+# smooth data over network
+res1 = netPropagate(mutData = Y, adj.mat = W, alpha = .7, verbose = FALSE)
+```
+
+Plot input data for dummy patient to the network
+
+``` r
+map_to_color <- function(x){
+  rgb(colorRamp(c("white","red"))(x), 
+      maxColorValue = 255)
+}
+
+# plot input data
+plot(gr, 
+     vertex.label.color = "black",
+     vertex.color = purrr::map_chr(Y, map_to_color), 
+     vertex.label.cex = .7, 
+     layout = my_layout, 
+     vertex.label = NULL, 
+     main = paste("input"))
+```
+
+![](C:/Users/tjmoss/Documents/my_projects/network_smoothing/vignettes/example_smoothing_files/figure-markdown_github/unnamed-chunk-5-1.png)
+
+Plot smoothed data to network
+
+``` r
+# plot smoothed data
+smooth_Y <- res1$result[1,]
+smooth_Y[smooth_Y > 1] <- 1
+plot(gr, 
+     vertex.label.color = "black", 
+     vertex.color = purrr::map_chr(smooth_Y, map_to_color),
+     vertex.label.cex = .7, 
+     layout = my_layout, main = sprintf("Smoothed\n step: %s",res1$steps))
+```
+
+![](C:/Users/tjmoss/Documents/my_projects/network_smoothing/vignettes/example_smoothing_files/figure-markdown_github/unnamed-chunk-6-1.png)
