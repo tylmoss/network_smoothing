@@ -1,0 +1,14 @@
+Package: network.smoothing
+Type: Package
+Title: Smooth data across interaction networks
+Version: 0.1
+Date: 2015-07-14
+Author: Tyler J Moss
+Maintainer: Who to complain to <tjmoss@mdanderson.org>
+Description: Propogate values to network neigborhood using a network smoothing 
+  function.
+License: MIT
+Suggests: igraph,
+    knitr
+VignetteBuilder: knitr
+RoxygenNote: 6.1.0
